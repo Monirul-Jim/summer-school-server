@@ -101,12 +101,25 @@ async function run() {
       res.send(result);
 
     })
+    // check user admin or not
+    app.get('/users/admin/:email', jsonWebToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ admin: false })
+      }
+
+      const query = { email: email }
+      const user = await userCollection.findOne(query);
+      const result = { admin: user?.role === 'admin' }
+      res.send(result);
+    })
 
 
 
 
     // get course by using user email
-    app.get('/course',jsonWebToken, async (req, res) => {
+    app.get('/course', jsonWebToken, async (req, res) => {
       const email = req.query.email;
       if (!email) {
         res.send([]);
