@@ -9,6 +9,24 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+const jsonWebToken = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: 'unauthorized access' });
+  }
+  // bearer token
+  const token = authorization.split(' ')[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ error: true, message: 'unauthorized access' })
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
+
+
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USERS}:${process.env.DB_PASS}@cluster0.dsd2lyy.mongodb.net/?retryWrites=true&w=majority`;
@@ -87,17 +105,16 @@ async function run() {
 
 
 
-    // gat data by using user email
-    app.get('/course', async (req, res) => {
+    // get course by using user email
+    app.get('/course',jsonWebToken, async (req, res) => {
       const email = req.query.email;
       if (!email) {
         res.send([]);
       }
       const userEmail = req.decoded.email;
       if (email !== userEmail) {
-        return res.status(403).send({ error: true, message: 'wrong email' })
+        return res.status(403).send({ error: true, message: 'forbidden access' })
       }
-
       const query = { email: email };
       const result = await courseCollection.find(query).toArray();
       res.send(result);
