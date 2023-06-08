@@ -1,5 +1,6 @@
 const express = require('express');
 const app = express();
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 require('dotenv').config()
 const port = process.env.PORT || 5000;
@@ -27,8 +28,14 @@ async function run() {
     await client.connect();
     const PopularInstructor = client.db("Summer-School").collection("class");
     const userCollection = client.db("Summer-School").collection("user");
+    const courseCollection = client.db("Summer-School").collection("course");
 
-
+    // create jwt token to secure api
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' })
+      res.send({ token })
+    })
 
 
 
@@ -80,7 +87,29 @@ async function run() {
 
 
 
+    // gat data by using user email
+    app.get('/course', async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        res.send([]);
+      }
+      const userEmail = req.decoded.email;
+      if (email !== userEmail) {
+        return res.status(403).send({ error: true, message: 'wrong email' })
+      }
 
+      const query = { email: email };
+      const result = await courseCollection.find(query).toArray();
+      res.send(result);
+    });
+
+
+    // added course collection to database
+    app.post('/course', async (req, res) => {
+      const course = req.body;
+      const result = await courseCollection.insertOne(course);
+      res.send(result);
+    })
 
 
 
