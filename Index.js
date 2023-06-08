@@ -26,14 +26,35 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     const PopularInstructor = client.db("Summer-School").collection("class");
+    const userCollection = client.db("Summer-School").collection("user");
 
 
 
 
-app.get('/classes',async(req,res)=>{
-    const result=await PopularInstructor.find().toArray()
-    res.send(result)
-})
+
+
+
+
+    // insert database user 
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email }
+      const existingUser = await userCollection.findOne(query);
+
+      if (existingUser) {
+        return res.send({ message: 'user already exists' })
+      }
+
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+
+
+    app.get('/classes', async (req, res) => {
+      const result = await PopularInstructor.find().toArray()
+      res.send(result)
+    })
 
 
     // Send a ping to confirm a successful connection
@@ -48,9 +69,9 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('helle there')
+  res.send('helle there')
 })
 
 app.listen(port, () => {
-    console.log(`Student do their homework PORT ${port}`);
+  console.log(`Student do their homework PORT ${port}`);
 })
