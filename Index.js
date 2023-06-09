@@ -68,6 +68,55 @@ async function run() {
     }
 
 
+    // decrease when a user purchase a course
+    app.post('/course', async (req, res) => {
+      const { menuItemId, instructor_name, name, image, price, email } = req.body;
+      try {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        const updatedCourse = await Course.findOneAndUpdate(
+          { _id: menuItemId, available_seats: { $gt: 0 } },
+          { $inc: { available_seats: -1 } },
+          { new: true }
+        ).session(session);
+
+        if (!updatedCourse) {
+          await session.commitTransaction();
+          session.endSession();
+          return res.status(400).json({ success: false, error: 'No available seats for the course' });
+        }
+
+        const newPurchase = new Purchase({
+          menuItemId,
+          instructor_name,
+          name,
+          image,
+          price,
+          email
+        });
+
+        await newPurchase.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.json({ success: true, message: 'Course purchased successfully' });
+      } catch (error) {
+        res.status(500).json({ success: false, error: 'Failed to purchase course' });
+      }
+    });
+
+
+
+
+
+
+
+
+
+
+
 
     // create payments
     app.post('/create-payment', jsonWebToken, async (req, res) => {
@@ -94,8 +143,10 @@ async function run() {
     })
 
     // display my enroll classes in the dashboard ui
-    app.get('/payments',jsonWebToken, async (req, res) => {
-      const result = await paymentsCollection.find().toArray()
+    app.get('/payments', jsonWebToken, async (req, res) => {
+      const userEmail = req.user.email; // Assuming the email is available in the user object provided by the JWT middleware
+      const result = await paymentsCollection.find({ email: userEmail }).toArray();
+      // const result = await paymentsCollection.find().toArray()
       res.send(result)
     })
     // user delete the after payments class
@@ -126,7 +177,7 @@ async function run() {
       res.send(result);
     });
     // delete user by only admin
-    app.delete('/users/:id',async (req, res) => {
+    app.delete('/users/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -148,6 +199,7 @@ async function run() {
       res.send(result);
 
     })
+ 
     // check user admin or not
     app.get('/users/admin/:email', jsonWebToken, async (req, res) => {
       const email = req.params.email;
@@ -161,7 +213,32 @@ async function run() {
       res.send(result);
     })
 
-
+       //  make instructor 
+       app.patch('/users/instructor/:id', async (req, res) => {
+        const id = req.params.id;
+        console.log(id);
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: 'instructor'
+          },
+        };
+  
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+  
+      })
+      // check instructor or not
+      app.get('/users/instructor/:email', jsonWebToken, async (req, res) => {
+        const email = req.params.email;
+        if (req.decoded.email !== email) {
+          res.send({ admin: false })
+        }
+        const query = { email: email }
+        const user = await userCollection.findOne(query);
+        const result = { admin: user?.role === 'instructor' }
+        res.send(result);
+      })
 
 
 
