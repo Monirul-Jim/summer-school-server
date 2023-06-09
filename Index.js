@@ -3,6 +3,7 @@ const app = express();
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 require('dotenv').config()
+const stripe = require('stripe')(process.env.PAYMENTS_KEY)
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -11,7 +12,6 @@ app.use(express.json());
 
 const jsonWebToken = (req, res, next) => {
   const authorization = req.headers.authorization;
-  console.log(authorization);
   if (!authorization) {
     return res.status(401).send({ error: true, message: 'unauthorized access' });
   }
@@ -20,7 +20,6 @@ const jsonWebToken = (req, res, next) => {
 
   jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
     if (err) {
-      console.log(err);
       return res.status(401).send({ error: true, message: 'unauthorized access' })
     }
     req.decoded = decoded;
@@ -49,6 +48,7 @@ async function run() {
     const PopularInstructor = client.db("Summer-School").collection("class");
     const userCollection = client.db("Summer-School").collection("user");
     const courseCollection = client.db("Summer-School").collection("course");
+    const paymentsCollection = client.db("Summer-School").collection("payments");
 
     // create jwt token to secure api
     app.post('/jwt', (req, res) => {
@@ -59,10 +59,8 @@ async function run() {
 
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      console.log(req.decoded);
       const query = { email: email }
       const user = await userCollection.findOne(query);
-      console.log(user);
       if (user?.role !== 'admin') {
         return res.status(403).send({ error: true, message: 'forbidden message' });
       }
@@ -70,6 +68,36 @@ async function run() {
     }
 
 
+
+    // create payments
+    app.post('/create-payment', jsonWebToken, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+    app.post('/payments', jsonWebToken, async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentsCollection.insertOne(payment);
+
+      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
+      const deleteResult = await courseCollection.deleteMany(query)
+
+      res.send({ insertResult, deleteResult });
+    })
+
+    // display my enroll classes in the dashboard ui
+    app.get('/classes', async (req, res) => {
+      const result = await paymentsCollection.find().toArray()
+      res.send(result)
+    })
 
 
     // insert database user 
@@ -86,12 +114,12 @@ async function run() {
       res.send(result);
     });
     // get all user in the ui
-    app.get('/users',jsonWebToken,verifyAdmin, async (req, res) => {
+    app.get('/users', jsonWebToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
     // delete user by only admin
-    app.delete('/users/:id',jsonWebToken,verifyAdmin, async (req, res) => {
+    app.delete('/users/:id', jsonWebToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -114,7 +142,7 @@ async function run() {
 
     })
     // check user admin or not
-    app.get('/users/admin/:email', jsonWebToken,async (req, res) => {
+    app.get('/users/admin/:email', jsonWebToken, async (req, res) => {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
@@ -130,8 +158,8 @@ async function run() {
 
 
 
-     // added course collection to database
-     app.post('/course', async (req, res) => {
+    // added course collection to database
+    app.post('/course', async (req, res) => {
       const course = req.body;
       const result = await courseCollection.insertOne(course);
       res.send(result);
@@ -152,14 +180,14 @@ async function run() {
       res.send(result);
     });
 
- // delete add item by order user
- app.delete('/course/:id', async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: new ObjectId(id) };
-  const result = await courseCollection.deleteOne(query);
-  res.send(result);
-})
-   
+    // delete add item by order user
+    app.delete('/course/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await courseCollection.deleteOne(query);
+      res.send(result);
+    })
+
 
 
 
