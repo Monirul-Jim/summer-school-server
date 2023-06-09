@@ -94,9 +94,16 @@ async function run() {
     })
 
     // display my enroll classes in the dashboard ui
-    app.get('/classes', async (req, res) => {
+    app.get('/payments',jsonWebToken, async (req, res) => {
       const result = await paymentsCollection.find().toArray()
       res.send(result)
+    })
+    // user delete the after payments class
+    app.delete('/payments/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await paymentsCollection.deleteOne(query);
+      res.send(result);
     })
 
 
@@ -119,7 +126,7 @@ async function run() {
       res.send(result);
     });
     // delete user by only admin
-    app.delete('/users/:id', jsonWebToken, verifyAdmin, async (req, res) => {
+    app.delete('/users/:id',async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
