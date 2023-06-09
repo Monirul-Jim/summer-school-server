@@ -108,7 +108,6 @@ async function run() {
       if (req.decoded.email !== email) {
         res.send({ admin: false })
       }
-
       const query = { email: email }
       const user = await userCollection.findOne(query);
       const result = { admin: user?.role === 'admin' }
@@ -117,6 +116,14 @@ async function run() {
 
 
 
+
+
+     // added course collection to database
+     app.post('/course', async (req, res) => {
+      const course = req.body;
+      const result = await courseCollection.insertOne(course);
+      res.send(result);
+    })
 
     // get course by using user email
     app.get('/course', jsonWebToken, async (req, res) => {
@@ -133,13 +140,14 @@ async function run() {
       res.send(result);
     });
 
-
-    // added course collection to database
-    app.post('/course', async (req, res) => {
-      const course = req.body;
-      const result = await courseCollection.insertOne(course);
-      res.send(result);
-    })
+ // delete add item by order user
+ app.delete('/course/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) };
+  const result = await userCollection.deleteOne(query);
+  res.send(result);
+})
+   
 
 
 
