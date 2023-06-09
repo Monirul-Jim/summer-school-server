@@ -11,6 +11,7 @@ app.use(express.json());
 
 const jsonWebToken = (req, res, next) => {
   const authorization = req.headers.authorization;
+  console.log(authorization);
   if (!authorization) {
     return res.status(401).send({ error: true, message: 'unauthorized access' });
   }
@@ -19,6 +20,7 @@ const jsonWebToken = (req, res, next) => {
 
   jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
     if (err) {
+      console.log(err);
       return res.status(401).send({ error: true, message: 'unauthorized access' })
     }
     req.decoded = decoded;
@@ -55,7 +57,17 @@ async function run() {
       res.send({ token })
     })
 
-
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      console.log(req.decoded);
+      const query = { email: email }
+      const user = await userCollection.findOne(query);
+      console.log(user);
+      if (user?.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
+      }
+      next();
+    }
 
 
 
@@ -74,12 +86,12 @@ async function run() {
       res.send(result);
     });
     // get all user in the ui
-    app.get('/users', async (req, res) => {
+    app.get('/users',jsonWebToken,verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
     // delete user by only admin
-    app.delete('/users/:id', async (req, res) => {
+    app.delete('/users/:id',jsonWebToken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -102,7 +114,7 @@ async function run() {
 
     })
     // check user admin or not
-    app.get('/users/admin/:email', jsonWebToken, async (req, res) => {
+    app.get('/users/admin/:email', jsonWebToken,async (req, res) => {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
