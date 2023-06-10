@@ -70,7 +70,7 @@ async function run() {
 
 
     // decrease when a user purchase a course
-    app.post('/course', async (req, res) => {
+    app.post('/course-app', async (req, res) => {
       const { menuItemId, instructor_name, name, image, price, email } = req.body;
       try {
         const session = await mongoose.startSession();
@@ -145,7 +145,7 @@ async function run() {
 
     // display my enroll classes in the dashboard ui
     app.get('/payments', jsonWebToken, async (req, res) => {
-      const userEmail = req.user.email; // Assuming the email is available in the user object provided by the JWT middleware
+      const userEmail = req.body.email;
       const result = await paymentsCollection.find({ email: userEmail }).toArray();
       // const result = await paymentsCollection.find().toArray()
       res.send(result)
@@ -206,7 +206,7 @@ async function run() {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
-        res.send({ admin: false })
+        return res.send({ admin: false })
       }
       const query = { email: email }
       const user = await userCollection.findOne(query);
@@ -233,7 +233,7 @@ async function run() {
     app.get('/users/instructor/:email', jsonWebToken, async (req, res) => {
       const email = req.params.email;
       if (req.decoded.email !== email) {
-        res.send({ admin: false })
+        return res.send({ admin: false })
       }
       const query = { email: email }
       const user = await userCollection.findOne(query);
@@ -254,7 +254,7 @@ async function run() {
     app.get('/course', jsonWebToken, async (req, res) => {
       const email = req.query.email;
       if (!email) {
-        res.send([]);
+        return res.send([]);
       }
       const userEmail = req.decoded.email;
       if (email !== userEmail) {
@@ -273,7 +273,7 @@ async function run() {
       res.send(result);
     })
 
-
+    // all about instructor
     // added a class by instructor
     app.post('/addClasses', async (req, res) => {
       const classes = req.body;
@@ -281,6 +281,24 @@ async function run() {
       const result = await addClassCollection.insertOne(classes);
       res.send(result);
     })
+    // instructor get classes he added from addClasses from database
+    app.get('/addClasses', jsonWebToken, async (req, res) => {
+
+      let query = {}
+      if (req.query?.email) {
+        query = { email: req.query.email }
+      }
+      const result = await addClassCollection.find(query).toArray()
+      res.send(result)
+
+      // const email = req.user.email;
+      // const result = await addClassCollection.find({email:email}).toArray();
+      // res.send(result)
+    })
+
+
+
+
 
 
     // all about home page
