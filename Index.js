@@ -50,6 +50,7 @@ async function run() {
     const courseCollection = client.db("Summer-School").collection("course");
     const paymentsCollection = client.db("Summer-School").collection("payments");
     const addClassCollection = client.db("Summer-School").collection("addClass");
+    const feedbackCollection = client.db("Summer-School").collection("feedback");
 
     // create jwt token to secure api
     app.post('/jwt', (req, res) => {
@@ -68,56 +69,18 @@ async function run() {
       next();
     }
 
+    // admin feedback the instructor why he decline class
+    app.post('/feedback', async (req, res) => {
+      const course = req.body;
+      const result = await feedbackCollection.insertOne(course);
+      res.send(result);
+    })
+    app.get('/feedback', async (req, res) => {
+      const result = await feedbackCollection.find().toArray();
+      res.send(result);
+    })
 
-    // decrease when a user purchase a course
-    app.post('/course-app', async (req, res) => {
-      const { menuItemId, instructor_name, name, image, price, email } = req.body;
-      try {
-        const session = await mongoose.startSession();
-        session.startTransaction();
-
-        const updatedCourse = await Course.findOneAndUpdate(
-          { _id: menuItemId, available_seats: { $gt: 0 } },
-          { $inc: { available_seats: -1 } },
-          { new: true }
-        ).session(session);
-
-        if (!updatedCourse) {
-          await session.commitTransaction();
-          session.endSession();
-          return res.status(400).json({ success: false, error: 'No available seats for the course' });
-        }
-
-        const newPurchase = new Purchase({
-          menuItemId,
-          instructor_name,
-          name,
-          image,
-          price,
-          email
-        });
-
-        await newPurchase.save({ session });
-
-        await session.commitTransaction();
-        session.endSession();
-
-        res.json({ success: true, message: 'Course purchased successfully' });
-      } catch (error) {
-        res.status(500).json({ success: false, error: 'Failed to purchase course' });
-      }
-    });
-
-
-
-
-
-
-
-
-
-
-
+   
 
     // create payments
     app.post('/create-payment', jsonWebToken, async (req, res) => {
@@ -272,6 +235,11 @@ async function run() {
       const result = await courseCollection.deleteOne(query);
       res.send(result);
     })
+    // pass data to instructor to admin 
+    app.get('/addClasses-admin',jsonWebToken,async(req,res)=>{
+      const result=await addClassCollection.find().toArray()
+       res.send(result)
+    })
 
     // all about instructor
     // added a class by instructor
@@ -290,12 +258,31 @@ async function run() {
       }
       const result = await addClassCollection.find(query).toArray()
       res.send(result)
-
-      // const email = req.user.email;
-      // const result = await addClassCollection.find({email:email}).toArray();
-      // res.send(result)
     })
 
+    // instructor update status from pending,approved and denied
+
+    app.put('/updateStatus/:id', async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body;
+    
+      if (status !== 'approved' && status !== 'denied') {
+        return res.status(400).send('Invalid status');
+      }
+    
+      const updatedClass = await addClassCollection.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: { status } },
+        { returnOriginal: false }
+      );
+    
+      if (!updatedClass.value) {
+        return res.status(404).send('Class not found');
+      }
+    
+      res.send(updatedClass.value);
+    });
+    
 
 
 
