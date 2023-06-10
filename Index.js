@@ -49,6 +49,7 @@ async function run() {
     const userCollection = client.db("Summer-School").collection("user");
     const courseCollection = client.db("Summer-School").collection("course");
     const paymentsCollection = client.db("Summer-School").collection("payments");
+    const addClassCollection = client.db("Summer-School").collection("addClass");
 
     // create jwt token to secure api
     app.post('/jwt', (req, res) => {
@@ -199,7 +200,7 @@ async function run() {
       res.send(result);
 
     })
- 
+
     // check user admin or not
     app.get('/users/admin/:email', jsonWebToken, async (req, res) => {
       const email = req.params.email;
@@ -213,32 +214,32 @@ async function run() {
       res.send(result);
     })
 
-       //  make instructor 
-       app.patch('/users/instructor/:id', async (req, res) => {
-        const id = req.params.id;
-        console.log(id);
-        const filter = { _id: new ObjectId(id) };
-        const updateDoc = {
-          $set: {
-            role: 'instructor'
-          },
-        };
-  
-        const result = await userCollection.updateOne(filter, updateDoc);
-        res.send(result);
-  
-      })
-      // check instructor or not
-      app.get('/users/instructor/:email', jsonWebToken, async (req, res) => {
-        const email = req.params.email;
-        if (req.decoded.email !== email) {
-          res.send({ admin: false })
-        }
-        const query = { email: email }
-        const user = await userCollection.findOne(query);
-        const result = { admin: user?.role === 'instructor' }
-        res.send(result);
-      })
+    //  make instructor 
+    app.patch('/users/instructor/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: 'instructor'
+        },
+      };
+
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+
+    })
+    // check instructor or not
+    app.get('/users/instructor/:email', jsonWebToken, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false })
+      }
+      const query = { email: email }
+      const user = await userCollection.findOne(query);
+      const result = { admin: user?.role === 'instructor' }
+      res.send(result);
+    })
 
 
 
@@ -273,6 +274,13 @@ async function run() {
     })
 
 
+    // added a class by instructor
+    app.post('/addClasses', async (req, res) => {
+      const classes = req.body;
+      classes.status = 'pending';
+      const result = await addClassCollection.insertOne(classes);
+      res.send(result);
+    })
 
 
     // all about home page
