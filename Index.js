@@ -76,11 +76,11 @@ async function run() {
       res.send(result);
     })
     app.get('/feedback', async (req, res) => {
-      const result = await feedbackCollection.find().toArray();
-      res.send(result);
+      const result = await feedbackCollection.find().toArray()
+      res.send(result)
     })
 
-   
+
 
     // create payments
     app.post('/create-payment', jsonWebToken, async (req, res) => {
@@ -236,10 +236,21 @@ async function run() {
       res.send(result);
     })
     // pass data to instructor to admin 
-    app.get('/addClasses-admin',jsonWebToken,async(req,res)=>{
-      const result=await addClassCollection.find().toArray()
-       res.send(result)
+    app.get('/addClasses-admin', jsonWebToken, async (req, res) => {
+      const result = await addClassCollection.find().toArray()
+      res.send(result)
     })
+    app.get('/approvedClass', async (req, res) => {
+      const result = await addClassCollection.find().toArray()
+      res.send(result)
+    })
+    // classes to payment here use class by email
+    // app.get('/approvedClass/:email', async (req, res) => {
+    //   const email = req.params.email;
+    //   const query = { email: email }
+    //   const result = await addClassCollection.find(query).toArray()
+    //   res.send(result)
+    // })
 
     // all about instructor
     // added a class by instructor
@@ -265,24 +276,24 @@ async function run() {
     app.put('/updateStatus/:id', async (req, res) => {
       const { id } = req.params;
       const { status } = req.body;
-    
+
       if (status !== 'approved' && status !== 'denied') {
         return res.status(400).send('Invalid status');
       }
-    
+
       const updatedClass = await addClassCollection.findOneAndUpdate(
         { _id: new ObjectId(id) },
         { $set: { status } },
         { returnOriginal: false }
       );
-    
+
       if (!updatedClass.value) {
         return res.status(404).send('Class not found');
       }
-    
+
       res.send(updatedClass.value);
     });
-    
+
 
 
 
