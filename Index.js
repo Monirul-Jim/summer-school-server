@@ -83,7 +83,7 @@ async function run() {
 
 
     // create payments
-    app.post('/create-payment', jsonWebToken, async (req, res) => {
+    app.post('/create-payment',jsonWebToken, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       const paymentIntent = await stripe.paymentIntents.create({
@@ -97,13 +97,18 @@ async function run() {
       })
     })
     app.post('/payments', jsonWebToken, async (req, res) => {
-      const payment = req.body;
-      const insertResult = await paymentsCollection.insertOne(payment);
-
-      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
-      const deleteResult = await courseCollection.deleteMany(query)
-
-      res.send({ insertResult, deleteResult });
+      try {
+        const payment = req.body;
+        const insertResult = await paymentsCollection.insertOne(payment);
+    
+        // const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
+        const deleteResult = await courseCollection.deleteOne({_id:new ObjectId(payment.cartItems)});
+    
+        res.send({ insertResult, deleteResult });
+      } catch (error) {
+        // Handle error appropriately
+        res.status(500).send({ error: 'Payment processing failed' });
+      }
     })
 
     // display my enroll classes in the dashboard ui
@@ -259,6 +264,25 @@ async function run() {
       classes.status = 'pending';
       const result = await addClassCollection.insertOne(classes);
       res.send(result);
+    })
+    // update class by instructor
+    app.put('/update-class/:id', async (req, res) => {
+      const id = req.params.id
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true }
+      const updateClasses = req.body
+      const updated = {
+        $set: {
+          photo: updateClasses.photo,
+          name: updateClasses.name,
+          instructorName: updateClasses.instructorName,
+          email: updateClasses.email,
+          price: updateClasses.price,
+          available_seats: updateClasses.available_seats,
+        }
+      }
+      const result = await addClassCollection.updateOne(filter,updated, options)
+      res.send(result)
     })
     // instructor get classes he added from addClasses from database
     app.get('/addClasses', jsonWebToken, async (req, res) => {
