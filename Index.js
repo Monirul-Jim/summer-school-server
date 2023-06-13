@@ -1,8 +1,8 @@
 const express = require('express');
 const app = express();
 const jwt = require('jsonwebtoken');
-const cors = require('cors');
 require('dotenv').config()
+const cors = require('cors');
 const stripe = require('stripe')(process.env.PAYMENTS_KEY)
 const port = process.env.PORT || 5000;
 
@@ -83,7 +83,7 @@ async function run() {
 
 
     // create payments
-    app.post('/create-payment',jsonWebToken, async (req, res) => {
+    app.post('/create-payment', jsonWebToken, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       const paymentIntent = await stripe.paymentIntents.create({
@@ -100,11 +100,18 @@ async function run() {
       try {
         const payment = req.body;
         const insertResult = await paymentsCollection.insertOne(payment);
-    
-        // const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
-        const deleteResult = await courseCollection.deleteOne({_id:new ObjectId(payment.cartItems)});
-    
-        res.send({ insertResult, deleteResult });
+
+
+        // const pay = req.body;
+        // const insert = await paymentsCollection.insertOne(pay);
+        const updateResult = await addClassCollection.updateOne(
+          { _id: new ObjectId(payment.menuItems) },
+          { $inc: { available_seats: -1 } }
+        );
+
+        const deleteResult = await courseCollection.deleteOne({ _id: new ObjectId(payment.cartItems) });
+
+        res.send({ insertResult,updateResult,deleteResult});
       } catch (error) {
         // Handle error appropriately
         res.status(500).send({ error: 'Payment processing failed' });
@@ -113,9 +120,11 @@ async function run() {
 
     // display my enroll classes in the dashboard ui
     app.get('/payments', jsonWebToken, async (req, res) => {
-      const userEmail = req.body.email;
-      const result = await paymentsCollection.find({ email: userEmail }).toArray();
-      // const result = await paymentsCollection.find().toArray()
+      let query = {}
+      if (req.query?.email) {
+        query = { email: req.query.email }
+      }
+      const result = await paymentsCollection.find(query).toArray()
       res.send(result)
     })
     // user delete the after payments class
@@ -156,7 +165,6 @@ async function run() {
     // make admin
     app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
-      console.log(id);
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
@@ -185,7 +193,6 @@ async function run() {
     //  make instructor 
     app.patch('/users/instructor/:id', async (req, res) => {
       const id = req.params.id;
-      console.log(id);
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
@@ -249,6 +256,26 @@ async function run() {
       const result = await addClassCollection.find().toArray()
       res.send(result)
     })
+    // when paid a course then decrease the sit number 
+    app.put('/decreaseSit', async (req, res) => {
+      try {
+        const { menuItem } = req.body;
+        const updatedDocument = await addClassCollection.findOneAndUpdate(
+          { menuItem: menuItem },
+          { $inc: { availableSeats: -1 } },
+          { returnOriginal: false }
+        );
+
+        if (updatedDocument) {
+          res.status(200).json({ message: 'Seat decreased successfully' });
+        } else {
+          res.status(404).json({ error: 'Course not found' });
+        }
+      } catch (error) {
+        console.error('Error decreasing seat:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    })
     // classes to payment here use class by email
     // app.get('/approvedClass/:email', async (req, res) => {
     //   const email = req.params.email;
@@ -281,7 +308,7 @@ async function run() {
           available_seats: updateClasses.available_seats,
         }
       }
-      const result = await addClassCollection.updateOne(filter,updated, options)
+      const result = await addClassCollection.updateOne(filter, updated, options)
       res.send(result)
     })
     // instructor get classes he added from addClasses from database
