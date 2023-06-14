@@ -81,9 +81,7 @@ async function run() {
       res.send(result);
     })
     app.get('/feedback/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await feedbackCollection.find(query).toArray()
+      const result = await feedbackCollection.find().toArray()
       res.send(result)
     })
 
