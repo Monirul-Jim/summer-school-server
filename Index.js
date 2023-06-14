@@ -75,8 +75,10 @@ async function run() {
       const result = await feedbackCollection.insertOne(course);
       res.send(result);
     })
-    app.get('/feedback', async (req, res) => {
-      const result = await feedbackCollection.find().toArray()
+    app.get('/feedback/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await feedbackCollection.find(query).toArray()
       res.send(result)
     })
 
@@ -272,6 +274,11 @@ async function run() {
         res.status(500).json({ error: 'Internal server error' });
       }
     })
+
+
+
+
+ 
     // classes to payment here use class by email
     // app.get('/approvedClass/:email', async (req, res) => {
     //   const email = req.params.email;
