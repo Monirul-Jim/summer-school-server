@@ -1,7 +1,7 @@
 const express = require('express');
+require('dotenv').config()
 const app = express();
 const jwt = require('jsonwebtoken');
-require('dotenv').config()
 const cors = require('cors');
 const stripe = require('stripe')(process.env.PAYMENTS_KEY)
 const port = process.env.PORT || 5000;
@@ -49,7 +49,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const PopularInstructor = client.db("Summer-School").collection("class");
     const userCollection = client.db("Summer-School").collection("user");
     const courseCollection = client.db("Summer-School").collection("course");
@@ -366,7 +366,7 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
