@@ -100,10 +100,6 @@ async function run() {
       try {
         const payment = req.body;
         const insertResult = await paymentsCollection.insertOne(payment);
-
-
-        // const pay = req.body;
-        // const insert = await paymentsCollection.insertOne(pay);
         const updateResult = await addClassCollection.updateOne(
           { _id: new ObjectId(payment.menuItems) },
           { $inc: { available_seats: -1 } }
